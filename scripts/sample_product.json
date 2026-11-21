@@ -1,0 +1,41 @@
+{
+  "retailer": {"slug": "example-furniture-pk", "name": "Example Furniture PK", "website_url": "https://example-furniture.pk", "city": "Karachi"},
+  "external_ref": "example-furniture-pk:sku-OSL-3S",
+  "name": "Oslo Sofa",
+  "brand": "Example Furniture",
+  "category_code": "sofa",
+  "description": "Three-seater sofa with solid wood legs.",
+  "listing_url": "https://example-furniture.pk/products/oslo-sofa",
+  "retailer_product_ref": "OSL-3S",
+  "variants": [
+    {
+      "variant_key": "OSL-3S-GRY",
+      "variant_label": "3-seater · grey fabric",
+      "sale_unit": "single",
+      "sale_unit_quantity": 1,
+      "dimensions": {
+        "kind": "assembled",
+        "width": {"value": 84, "unit": "in"},
+        "depth": {"value": 36, "unit": "in"},
+        "height": {"value": 32, "unit": "in"},
+        "source_text": "W 84 x D 36 x H 32 inches",
+        "source_ref": "https://example-furniture.pk/products/oslo-sofa#specifications"
+      },
+      "price": {
+        "price_pkr": 189000,
+        "availability": "in_stock",
+        "checked_at": "2026-10-24T10:00:00+05:00",
+        "source_url": "https://example-furniture.pk/products/oslo-sofa"
+      },
+      "attributes": [
+        {"key": "colour", "value": "grey"},
+        {"key": "material", "value": "fabric upholstery, solid wood legs"}
+      ],
+      "room_uses": [{"room_type": "living_room", "use_tag": "seating"}],
+      "images": [
+        {"url": "https://example-furniture.pk/images/oslo-grey-front.jpg", "view_angle": "front", "role": "primary"},
+        {"url": "https://example-furniture.pk/images/oslo-grey-side.jpg", "view_angle": "left"}
+      ]
+    }
+  ]
+}

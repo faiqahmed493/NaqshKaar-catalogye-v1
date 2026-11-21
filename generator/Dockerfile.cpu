@@ -1,0 +1,8 @@
+# CPU worker image for the 'mock', 'trellis_hf' and 'meshy' engines (no GPU needed).
+FROM python:3.12-slim
+WORKDIR /worker
+COPY pyproject.toml ./
+COPY naqshkaar_generator ./naqshkaar_generator
+RUN pip install --no-cache-dir ".[hf]"
+ENV ENGINES=mock WORK_DIR=/tmp/work GPU_LOCK_FILE=
+CMD ["python", "-m", "naqshkaar_generator"]

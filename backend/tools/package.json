@@ -1,0 +1,6 @@
+{
+  "name": "naqshkaar-gltf-validator",
+  "private": true,
+  "type": "module",
+  "dependencies": { "gltf-validator": "^2.0.0-dev.3.9" }
+}

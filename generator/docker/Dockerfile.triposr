@@ -1,0 +1,12 @@
+# GPU worker for TripoSR (~6 GB VRAM). Needs the NVIDIA Container Toolkit on the host.
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
+ENV DEBIAN_FRONTEND=noninteractive TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9;9.0"
+RUN apt-get update && apt-get install -y --no-install-recommends git libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 https://github.com/VAST-AI-Research/TripoSR.git /opt/TripoSR \
+ && pip install --no-cache-dir -r /opt/TripoSR/requirements.txt rembg onnxruntime-gpu
+WORKDIR /worker
+COPY pyproject.toml ./
+COPY naqshkaar_generator ./naqshkaar_generator
+RUN pip install --no-cache-dir .
+ENV TRIPOSR_REPO=/opt/TripoSR ENGINES=triposr WORK_DIR=/tmp/work GPU_LOCK_FILE=/tmp/naqshkaar-gpu.lock
+CMD ["python", "-m", "naqshkaar_generator"]

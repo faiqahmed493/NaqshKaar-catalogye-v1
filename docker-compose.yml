@@ -1,0 +1,142 @@
+# Naqshkaar Catalogue Studio
+#   docker compose up -d --build                 database, API, CPU worker, web UI
+#   docker compose --profile mock up -d          + a mock 3D worker (no GPU) to test the pipeline
+#   docker compose --profile gpu-triposr up -d   + a TripoSR GPU worker (NVIDIA Container Toolkit)
+#   docker compose --profile s3 up -d            + MinIO object storage (set STORAGE_BACKEND=s3)
+# All credentials come from .env (copy .env.example). See SETUP.md.
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  SECRET_KEY: ${SECRET_KEY}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
+  STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+  STORAGE_ROOT: /data/storage
+  S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+  S3_BUCKET: ${S3_BUCKET:-naqshkaar-catalogue}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  REQUIRE_GLTF_VALIDATOR: ${REQUIRE_GLTF_VALIDATOR:-true}
+  INGEST_AUTO_CREATE_RETAILER: ${INGEST_AUTO_CREATE_RETAILER:-true}
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      RUN_MIGRATIONS: "true"
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Admin}
+    volumes:
+      - storage:/data/storage
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    environment:
+      <<: *backend-env
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+
+  generator-mock:
+    profiles: ["mock"]
+    build:
+      context: ./generator
+      dockerfile: Dockerfile.cpu
+    restart: unless-stopped
+    environment:
+      STUDIO_URL: http://api:8000
+      STUDIO_API_KEY: ${WORKER_API_KEY:-}   # Settings → API keys → scope worker
+      WORKER_ID: docker-mock
+      ENGINES: ${CPU_ENGINES:-mock}
+      MESHY_API_KEY: ${MESHY_API_KEY:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      TRELLIS_HF_SPACE: ${TRELLIS_HF_SPACE:-trellis-community/TRELLIS}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  generator-triposr:
+    profiles: ["gpu-triposr"]
+    build:
+      context: ./generator
+      dockerfile: docker/Dockerfile.triposr
+    restart: unless-stopped
+    environment:
+      STUDIO_URL: http://api:8000
+      STUDIO_API_KEY: ${WORKER_API_KEY:-}   # Settings → API keys → scope worker
+      WORKER_ID: docker-triposr
+      ENGINES: triposr
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  minio:
+    profiles: ["s3"]
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-change-me-minio}
+    volumes:
+      - minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+volumes:
+  pgdata:
+  storage:
+  minio:
+  hf-cache:

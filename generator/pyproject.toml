@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "naqshkaar-generator"
+version = "1.0.0"
+description = "Naqshkaar 3D generation worker: product images to GLB with open-source image-to-3D models"
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.27",
+  "Pillow>=10",
+  "numpy>=1.24",
+  "trimesh>=4.4",
+  "networkx>=3",
+  "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+hf = ["gradio_client>=2.0"]   # trellis_hf engine (Hugging Face Space)
+
+[project.scripts]
+naqshkaar-worker = "naqshkaar_generator.worker:main"
+
+[tool.setuptools.packages.find]
+include = ["naqshkaar_generator*"]
